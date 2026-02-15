@@ -59,4 +59,33 @@ def load_and_train_models():
     # Train Models
     models = {
         "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
-        "Decision Tree": DecisionTreeClassifier(max_depth=5, min_samples_leaf=10
+        "Decision Tree": DecisionTreeClassifier(max_depth=5, min_samples_leaf=10, random_state=42),
+        "Random Forest": RandomForestClassifier(n_estimators=10, max_depth=8, min_samples_leaf=20, random_state=42)
+    }
+    
+    for name, model in models.items():
+        if name == "Logistic Regression":
+            model.fit(X_scaled, y)
+        else:
+            model.fit(X, y)
+            
+    return models, X.columns, scaler, list(df.columns)
+
+# Load models
+models, train_columns, scaler, original_columns = load_and_train_models()
+
+# Stop execution if models failed to load
+if models is None:
+    st.stop()
+
+# --- 2. Sidebar: Model Selection ---
+st.sidebar.header("User Input")
+model_name = st.sidebar.selectbox("Select Model", list(models.keys()))
+
+# --- 3. Main Interface: File Upload ---
+uploaded_file = st.file_uploader("Upload your Test CSV (Must contain 'Status' column for evaluation)", type=["csv"])
+
+if uploaded_file is not None:
+    # Read Data
+    test_df = pd.read_csv(uploaded_file)
+    test_df.columns
