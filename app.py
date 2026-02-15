@@ -22,18 +22,18 @@ Upload your test dataset to evaluate the model performance.
 def load_and_train_models():
     # Load Training Data
     try:
-        df = pd.read_csv('hr_data.csv')
+        df = pd.read_csv('test_sample.csv')
         
         # FIX: Clean column names to remove any leading/trailing spaces
         df.columns = df.columns.str.strip()
         
         # Check if 'Status' exists
         if 'Status' not in df.columns:
-            st.error(f"CRITICAL ERROR: 'Status' column not found in hr_data.csv.\nFound columns: {list(df.columns)}")
+            st.error(f"CRITICAL ERROR: 'Status' column not found in test_sample.csv.\nFound columns: {list(df.columns)}")
             return None, None, None, None
             
     except FileNotFoundError:
-        st.error("Error: 'hr_data.csv' not found. Please ensure it is in the GitHub repository.")
+        st.error("Error: 'test_sample.csv' not found. Please ensure it is in the GitHub repository.")
         return None, None, None, None
 
     # Preprocessing
