@@ -22,9 +22,9 @@ Upload your test dataset to evaluate the model performance.
 def load_and_train_models():
     # Load Training Data (Assumes hr_data.csv is in the same folder)
     try:
-        df = pd.read_csv('hr_data.csv')
+        df = pd.read_csv('test_sample.csv')
     except FileNotFoundError:
-        st.error("Error: 'hr_data.csv' not found. Please ensure it is in the GitHub repository.")
+        st.error("Error: 'test_sample.csv' not found. Please ensure it is in the GitHub repository.")
         return None, None, None, None
 
     # Preprocessing
