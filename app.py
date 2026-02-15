@@ -20,11 +20,20 @@ Upload your test dataset to evaluate the model performance.
 # --- 1. Load and Train Models (Cached) ---
 @st.cache_resource
 def load_and_train_models():
-    # Load Training Data (Assumes hr_data.csv is in the same folder)
+    # Load Training Data
     try:
-        df = pd.read_csv('test_sample.csv')
+        df = pd.read_csv('hr_data.csv')
+        
+        # FIX: Clean column names to remove any leading/trailing spaces
+        df.columns = df.columns.str.strip()
+        
+        # Check if 'Status' exists
+        if 'Status' not in df.columns:
+            st.error(f"CRITICAL ERROR: 'Status' column not found in hr_data.csv.\nFound columns: {list(df.columns)}")
+            return None, None, None, None
+            
     except FileNotFoundError:
-        st.error("Error: 'test_sample.csv' not found. Please ensure it is in the GitHub repository.")
+        st.error("Error: 'hr_data.csv' not found. Please ensure it is in the GitHub repository.")
         return None, None, None, None
 
     # Preprocessing
@@ -32,13 +41,14 @@ def load_and_train_models():
     df = df.drop(['SLNO', 'Candidate Ref'], axis=1, errors='ignore')
     
     # Target Encoding
-    if 'Status' in df.columns:
-        df['Status'] = df['Status'].map({'Joined': 1, 'Not Joined': 0})
+    # Map 'Joined' to 1 and 'Not Joined' to 0
+    df['Status'] = df['Status'].map({'Joined': 1, 'Not Joined': 0})
     
     # Feature Encoding
     categorical_cols = df.select_dtypes(include=['object']).columns
     df_encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
     
+    # Separation
     X = df_encoded.drop('Status', axis=1)
     y = df_encoded['Status']
     
@@ -49,98 +59,4 @@ def load_and_train_models():
     # Train Models
     models = {
         "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
-        "Decision Tree": DecisionTreeClassifier(max_depth=5, min_samples_leaf=10, random_state=42),
-        "Random Forest": RandomForestClassifier(n_estimators=10, max_depth=8, min_samples_leaf=20, random_state=42)
-    }
-    
-    for name, model in models.items():
-        if name == "Logistic Regression":
-            model.fit(X_scaled, y)
-        else:
-            model.fit(X, y) # Trees don't need scaling
-            
-    return models, X.columns, scaler, list(df.columns)
-
-# Load models
-models, train_columns, scaler, original_columns = load_and_train_models()
-
-# --- 2. Sidebar: Model Selection ---
-st.sidebar.header("User Input")
-model_name = st.sidebar.selectbox("Select Model", list(models.keys()) if models else [])
-
-# --- 3. Main Interface: File Upload ---
-uploaded_file = st.file_uploader("Upload your Test CSV (Must contain 'Status' column for evaluation)", type=["csv"])
-
-if uploaded_file is not None and models:
-    # Read Data
-    test_df = pd.read_csv(uploaded_file)
-    st.write("### Uploaded Data Preview")
-    st.dataframe(test_df.head())
-    
-    # Preprocessing for Test Data
-    try:
-        # Drop IDs
-        test_df_clean = test_df.drop(['SLNO', 'Candidate Ref'], axis=1, errors='ignore')
-        
-        # separate target if exists
-        if 'Status' in test_df_clean.columns:
-            # map target
-            y_test = test_df_clean['Status'].map({'Joined': 1, 'Not Joined': 0})
-            test_df_clean = test_df_clean.drop('Status', axis=1)
-            has_labels = True
-        else:
-            has_labels = False
-        
-        # Encode Categoricals
-        categorical_cols_test = test_df_clean.select_dtypes(include=['object']).columns
-        test_encoded = pd.get_dummies(test_df_clean, columns=categorical_cols_test, drop_first=True)
-        
-        # Align Columns with Training Data (Crucial Step!)
-        # This ensures the test data has exactly the same columns as the model expects
-        test_encoded = test_encoded.reindex(columns=train_columns, fill_value=0)
-        
-        # Select Model
-        model = models[model_name]
-        
-        # Predict
-        if model_name == "Logistic Regression":
-            X_test_scaled = scaler.transform(test_encoded)
-            y_pred = model.predict(X_test_scaled)
-        else:
-            y_pred = model.predict(test_encoded)
-            
-        # Display Predictions
-        st.subheader(f"Results using {model_name}")
-        
-        if has_labels:
-            # --- Metrics ---
-            acc = accuracy_score(y_test, y_pred)
-            st.metric("Accuracy", f"{acc:.2%}")
-            
-            # --- Confusion Matrix ---
-            st.write("#### Confusion Matrix")
-            cm = confusion_matrix(y_test, y_pred)
-            fig, ax = plt.subplots()
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax, 
-                        xticklabels=['Not Joined', 'Joined'], yticklabels=['Not Joined', 'Joined'])
-            ax.set_xlabel('Predicted')
-            ax.set_ylabel('Actual')
-            st.pyplot(fig)
-            
-            # --- Classification Report ---
-            st.write("#### Classification Report")
-            report = classification_report(y_test, y_pred, output_dict=True)
-            st.dataframe(pd.DataFrame(report).transpose())
-            
-        else:
-            st.success("Predictions generated successfully!")
-            test_df['Predicted_Status'] = ["Joined" if p==1 else "Not Joined" for p in y_pred]
-            st.write(test_df[['Predicted_Status']])
-            
-    except Exception as e:
-        st.error(f"Error processing data: {e}")
-
-elif not models:
-    st.warning("Models could not be trained. Check if 'hr_data.csv' is in the repo.")
-else:
-    st.info("Please upload a CSV file to proceed.")
+        "Decision Tree": DecisionTreeClassifier(max_depth=5, min_samples_leaf=10
