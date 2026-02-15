@@ -11,10 +11,10 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
 # Title
-st.title("HR Candidate Joining Prediction App")
+st.title("Credit Card Default Prediction App")
 st.markdown("""
-This app predicts whether a candidate will **Join** or **Not Join** based on HR data.
-Upload your test dataset to evaluate the model performance.
+This app predicts whether a customer will **Default** (1) or **Not Default** (0) next month.
+Upload your test dataset to evaluate model performance.
 """)
 
 # --- 1. Load and Train Models (Cached) ---
@@ -22,37 +22,33 @@ Upload your test dataset to evaluate the model performance.
 def load_and_train_models():
     # Load Training Data
     try:
-        df = pd.read_csv('test_sample.csv')
+        df = pd.read_csv('UCI_Credit_Card.csv')
         
-        # FIX: Clean column names to remove any leading/trailing spaces
+        # Clean column names
         df.columns = df.columns.str.strip()
         
-        # Check if 'Status' exists
-        if 'Status' not in df.columns:
-            st.error(f"CRITICAL ERROR: 'Status' column not found in test_sample.csv.\nFound columns: {list(df.columns)}")
+        # Target Column Name in UCI dataset
+        target_col = 'default.payment.next.month'
+        
+        # Check if target exists
+        if target_col not in df.columns:
+            st.error(f"CRITICAL ERROR: '{target_col}' column not found in CSV.\nFound columns: {list(df.columns)}")
             return None, None, None, None
             
     except FileNotFoundError:
-        st.error("Error: 'test_sample.csv' not found. Please ensure it is in the GitHub repository.")
+        st.error("Error: 'UCI_Credit_Card.csv' not found. Please ensure it is in the GitHub repository.")
         return None, None, None, None
 
     # Preprocessing
-    # Drop IDs
-    df = df.drop(['SLNO', 'Candidate Ref'], axis=1, errors='ignore')
+    # Drop ID column if it exists
+    if 'ID' in df.columns:
+        df = df.drop('ID', axis=1)
     
-    # Target Encoding
-    # Map 'Joined' to 1 and 'Not Joined' to 0
-    df['Status'] = df['Status'].map({'Joined': 1, 'Not Joined': 0})
+    # Feature Separation
+    X = df.drop(target_col, axis=1)
+    y = df[target_col]
     
-    # Feature Encoding
-    categorical_cols = df.select_dtypes(include=['object']).columns
-    df_encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-    
-    # Separation
-    X = df_encoded.drop('Status', axis=1)
-    y = df_encoded['Status']
-    
-    # Scaling
+    # Scaling (Important for Logistic Regression)
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
@@ -69,10 +65,10 @@ def load_and_train_models():
         else:
             model.fit(X, y)
             
-    return models, X.columns, scaler, list(df.columns)
+    return models, X.columns, scaler, target_col
 
 # Load models
-models, train_columns, scaler, original_columns = load_and_train_models()
+models, train_columns, scaler, target_col = load_and_train_models()
 
 # Stop execution if models failed to load
 if models is None:
@@ -83,9 +79,69 @@ st.sidebar.header("User Input")
 model_name = st.sidebar.selectbox("Select Model", list(models.keys()))
 
 # --- 3. Main Interface: File Upload ---
-uploaded_file = st.file_uploader("Upload your Test CSV (Must contain 'Status' column for evaluation)", type=["csv"])
+uploaded_file = st.file_uploader(f"Upload your Test CSV (Must contain '{target_col}' column for evaluation)", type=["csv"])
 
 if uploaded_file is not None:
     # Read Data
     test_df = pd.read_csv(uploaded_file)
-    test_df.columns
+    test_df.columns = test_df.columns.str.strip() # Clean test data columns
+    
+    st.write("### Uploaded Data Preview")
+    st.dataframe(test_df.head())
+    
+    # Preprocessing for Test Data
+    try:
+        # Drop ID if exists
+        test_df_clean = test_df.drop('ID', axis=1, errors='ignore')
+        
+        # Handle Target if exists
+        has_labels = False
+        if target_col in test_df_clean.columns:
+            y_test = test_df_clean[target_col]
+            test_df_clean = test_df_clean.drop(target_col, axis=1)
+            has_labels = True
+        
+        # Align Columns (Crucial!)
+        # Ensure test data has the same columns as training data
+        test_df_clean = test_df_clean.reindex(columns=train_columns, fill_value=0)
+        
+        # Select Model
+        model = models[model_name]
+        
+        # Predict
+        if model_name == "Logistic Regression":
+            X_test_scaled = scaler.transform(test_df_clean)
+            y_pred = model.predict(X_test_scaled)
+        else:
+            y_pred = model.predict(test_df_clean)
+            
+        # Display Results
+        st.subheader(f"Results using {model_name}")
+        
+        if has_labels:
+            acc = accuracy_score(y_test, y_pred)
+            st.metric("Accuracy", f"{acc:.2%}")
+            
+            st.write("#### Confusion Matrix")
+            cm = confusion_matrix(y_test, y_pred)
+            fig, ax = plt.subplots()
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax, 
+                        xticklabels=['No Default', 'Default'], yticklabels=['No Default', 'Default'])
+            ax.set_xlabel('Predicted')
+            ax.set_ylabel('Actual')
+            st.pyplot(fig)
+            
+            st.write("#### Classification Report")
+            report = classification_report(y_test, y_pred, output_dict=True)
+            st.dataframe(pd.DataFrame(report).transpose())
+            
+        else:
+            st.success("Predictions generated!")
+            test_df['Predicted_Default'] = y_pred
+            st.write(test_df[['Predicted_Default']])
+            
+    except Exception as e:
+        st.error(f"Error processing data: {e}")
+
+else:
+    st.info("Please upload a CSV file to proceed.")
