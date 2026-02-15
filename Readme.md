@@ -1,5 +1,19 @@
 # Credit Card Default Prediction - ML Assignment 2
 
+GitHub repo link : arvindshankar1995/Machine-Learning-Assignment2
+
+Streamlit app link : Streamlit 
+# Credit Card Default Prediction App
+This project is a Machine Learning application built with Streamlit to predict credit card defaults. It allows users to upload a dataset and evaluate different classification models.
+# Features
+* **Model Selection:** Choose between Logistic Regression, Decision Tree, Random Forest, kNN, Naive Bayes, and SVM.
+* **Data Upload:** Upload a CSV file (e.g., `UCI_Credit_Card.csv`) to test the model.
+* **Evaluation Metrics:** Displays Accuracy Score, Confusion Matrix, and Classification Report.
+## Files
+* `app.py`: The main Streamlit application code.
+* `requirements.txt`: List of Python dependencies.
+* `UCI_Credit_Card.csv`: The dataset used for training and testing.
+
 ## 1. Problem Statement
 To predict the probability of a customer defaulting on their credit card payment next month based on demographic and repayment history data.
 
@@ -40,3 +54,4 @@ To predict the probability of a customer defaulting on their credit card payment
 2. Install dependencies: `pip install -r requirements.txt`
 
 3. Run the app: `streamlit run app.py`
+
