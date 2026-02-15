@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, plot_confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
 # Title
 st.title("HR Candidate Joining Prediction App")
